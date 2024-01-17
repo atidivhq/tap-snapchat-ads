@@ -43,21 +43,23 @@ def main():
     sf_warehouse = snowflake_creds.get("warehouse")
     sf_role = snowflake_creds.get("role")
 
-    ref_token = snapchat_creds.get("snapchat_refresh_token")
-    client_id = snapchat_creds.get("snapchat_client_id")
-    client_secret = snapchat_creds.get("snapchat_client_secret")
-
     conf = {
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "refresh_token": ref_token,
-        "swipe_up_attribution_window": "1_DAY",
-        "view_attribution_window": None,
+        "client_id": snapchat_creds.get("snapchat_client_id"),
+        "client_secret": snapchat_creds.get("snapchat_client_secret"),
+        "refresh_token": snapchat_creds.get("snapchat_refresh_token"),
+        "swipe_up_attribution_window": "28_DAY",
+        "view_attribution_window": "7_DAY",
         "omit_empty": "true",
         "targeting_country_codes": "us, ca, mx",
         "start_date": args.start_date,
         "end_date": args.end_date,
         "user_agent": "tap-snapchat-ads",
+        "org_account_ids": [
+            {
+                "organisation_id": snapchat_creds.get("snapchat_org_id"),
+                "ad_accounts": snapchat_creds.get("snapchat_ad_accounts"),
+            }
+        ],
     }
 
     tap = "tap-snapchat-ads"
@@ -65,27 +67,28 @@ def main():
     tap_config = "snapchat_config.json"
     target_config = "snowflake_config.json"
 
-    with open(tap_config, "w") as out:
+    with open(tap_config, "w", encoding="utf-8") as out:
         json.dump(conf, out)
 
     snowflake_conf = {
-        "snowflake_account": sf_account,
-        "snowflake_username": sf_username,
-        "snowflake_role": sf_role,
-        "snowflake_password": sf_password,
-        "snowflake_database": sf_database,
-        "snowflake_schema": sf_schema,
-        "snowflake_warehouse": sf_warehouse,
+        "user": sf_username,
+        "password": sf_password,
+        "account": sf_account,
+        "database": sf_database,
+        "role": sf_role,
+        "schema": sf_schema,
+        "warehouse": sf_warehouse,
     }
 
-    with open(target_config, "w") as out:
+    with open(target_config, "w", encoding="utf-8") as out:
         json.dump(snowflake_conf, out)
 
     r = os.system(
-        f" python3 tap_snapchat_ads/__init__.py  --config {tap_config}  --catalog {args.catalog} | .venv/bin/target-snowflake -c {target_config}"
+        f"venv/.{tap}/bin/{tap} --config {tap_config} --catalog {args.catalog} | venv/.venv-target-sf/bin/{target} --config {target_config}"
     )
 
     if r != 0:
+        print(r)
         raise Exception("error occurred!")
 
     if os.path.exists(tap_config):
